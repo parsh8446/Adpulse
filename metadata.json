@@ -1,0 +1,6 @@
+{
+  "name": "AdPulse — Self-Hosted Affiliate Ad Server & AdSense-Style Auto Engine",
+  "description": "Self-hosted affiliate ad serving system with AdSense-style drop-in header integration, auto-ad placement, banner rotation, interest targeting, and real-time analytics for Cloudflare Pages and Git.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
