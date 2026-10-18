@@ -311,16 +311,19 @@
     if (deviceEligible.length === 0) deviceEligible = activeList;
 
     // Filter by format with fallback (ensures ads display even if advertiser didn't create that exact format)
-    var formatEligible = deviceEligible.filter(function(ad) {
-      if (!format || format === 'auto' || ad.format === 'responsive_native') return true;
-      if (format.indexOf('728') !== -1) return ad.format === 'leaderboard_728x90';
-      if (format.indexOf('300') !== -1) return ad.format === 'rectangle_300x250';
-      if (format.indexOf('320') !== -1) return ad.format === 'mobile_320x50';
-      if (format.indexOf('160') !== -1) return ad.format === 'skyscraper_160x600';
-      return true;
-    });
-    // Fallback: If no ad matches strict format, adapt any available user ad responsively
-    if (formatEligible.length === 0) formatEligible = deviceEligible;
+    // When randomizeEnabled is true, all active campaigns participate in rotation and adapt responsively to any slot
+    var formatEligible = deviceEligible;
+    if (!randomizeEnabled) {
+      var filtered = deviceEligible.filter(function(ad) {
+        if (!format || format === 'auto' || ad.format === 'responsive_native') return true;
+        if (format.indexOf('728') !== -1) return ad.format === 'leaderboard_728x90';
+        if (format.indexOf('300') !== -1) return ad.format === 'rectangle_300x250';
+        if (format.indexOf('320') !== -1) return ad.format === 'mobile_320x50';
+        if (format.indexOf('160') !== -1) return ad.format === 'skyscraper_160x600';
+        return true;
+      });
+      if (filtered.length > 0) formatEligible = filtered;
+    }
 
     // Exclude ads already rendered on this page so multiple slots show different campaigns
     var candidatePool = formatEligible;

@@ -264,14 +264,17 @@ const AD_TAG_CODE = \`(function() {
     if (activeList.length === 0) activeList = CAMPAIGNS;
     if (activeList.length === 0) return null;
 
-    var formatEligible = activeList.filter(function(ad) {
-      if (!format || format === 'auto' || ad.format === 'responsive_native') return true;
-      if (format.indexOf('728') !== -1) return ad.format === 'leaderboard_728x90';
-      if (format.indexOf('300') !== -1) return ad.format === 'rectangle_300x250';
-      if (format.indexOf('320') !== -1) return ad.format === 'mobile_320x50';
-      return true;
-    });
-    if (formatEligible.length === 0) formatEligible = activeList;
+    var formatEligible = activeList;
+    if (!randomizeEnabled) {
+      var filtered = activeList.filter(function(ad) {
+        if (!format || format === 'auto' || ad.format === 'responsive_native') return true;
+        if (format.indexOf('728') !== -1) return ad.format === 'leaderboard_728x90';
+        if (format.indexOf('300') !== -1) return ad.format === 'rectangle_300x250';
+        if (format.indexOf('320') !== -1) return ad.format === 'mobile_320x50';
+        return true;
+      });
+      if (filtered.length > 0) formatEligible = filtered;
+    }
 
     var pool = formatEligible;
     if (excludeIds) {

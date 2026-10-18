@@ -95,6 +95,16 @@ export interface TargetingRule {
   active: boolean;
 }
 
+export interface DatabaseConfig {
+  storageType: 'cloudflare_d1' | 'local_disk';
+  accountId?: string;
+  databaseId?: string;
+  apiToken?: string;
+  isConnected: boolean;
+  lastConnectedAt?: string;
+  campaignCount?: number;
+}
+
 export type ActiveTab = 
   | 'overview' 
   | 'campaigns' 

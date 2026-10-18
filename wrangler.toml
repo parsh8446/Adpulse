@@ -1,0 +1,20 @@
+name = "adpulse"
+main = "public/_worker.js"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Cloudflare D1 SQL Database Binding
+# In Cloudflare Dashboard: Workers & Pages -> D1 -> Create database "adpulse-db"
+# Then link it to this Worker with variable name "DB"
+[[d1_databases]]
+binding = "DB"
+database_name = "adpulse-db"
+database_id = "adpulse-db-binding"
+
+# Static assets directory (for compiled dashboard and assets)
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+
+[vars]
+ADMIN_PASSCODE = "2026"

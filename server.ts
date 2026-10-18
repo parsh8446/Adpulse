@@ -96,14 +96,23 @@ function verifyAdminAuth(req: express.Request, res: express.Response, next: expr
   });
 }
 
+import { 
+  getD1Config, 
+  saveD1Config, 
+  fetchD1Campaigns, 
+  saveD1Campaigns, 
+  testD1Connection, 
+  initD1Tables 
+} from './src/server/d1Client';
+
 // API Routes
 
 /**
  * GET /api/campaigns
- * Public ad serving endpoint: returns active campaigns for ad-tag.js
+ * Public ad serving endpoint: returns active campaigns from Cloudflare D1 SQL (or local fallback)
  * Strictly NO admin passcode required so publisher websites and visitors can always view ads!
  */
-app.get('/api/campaigns', (req, res) => {
+app.get('/api/campaigns', async (req, res) => {
   // Domain whitelist check if enabled
   if (securityConfig.blockUnlistedDomains && securityConfig.allowedDomains.length > 0) {
     const referer = req.headers.referer || req.headers.origin || '';
@@ -124,14 +133,31 @@ app.get('/api/campaigns', (req, res) => {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
+
+  // Try Cloudflare D1 SQL first if configured
+  const d1Config = getD1Config();
+  if (d1Config.enabled) {
+    try {
+      const d1Campaigns = await fetchD1Campaigns();
+      if (d1Campaigns && d1Campaigns.length > 0) {
+        res.setHeader('X-AdPulse-Storage', 'cloudflare_d1');
+        return res.json(d1Campaigns);
+      }
+    } catch (err: any) {
+      console.warn('[AdPulse Server] D1 fetch failed, falling back to local memory/disk:', err.message);
+    }
+  }
+
+  res.setHeader('X-AdPulse-Storage', 'local_disk');
   res.json(campaignsStore);
 });
 
 /**
  * POST /api/campaigns
  * Protected: Requires master passcode to save, update, or delete campaigns!
+ * Persists to both Cloudflare D1 SQL and local disk!
  */
-app.post('/api/campaigns', verifyAdminAuth, (req, res) => {
+app.post('/api/campaigns', verifyAdminAuth, async (req, res) => {
   const newCampaigns = req.body;
   if (!Array.isArray(newCampaigns)) {
     return res.status(400).json({ error: 'Body must be an array of campaigns' });
@@ -146,12 +172,75 @@ app.post('/api/campaigns', verifyAdminAuth, (req, res) => {
     console.error('[AdPulse Server] Error saving to campaigns.json:', err);
   }
 
+  let storageType = 'local_disk';
+  const d1Config = getD1Config();
+  if (d1Config.enabled) {
+    try {
+      await saveD1Campaigns(campaignsStore);
+      storageType = 'cloudflare_d1';
+      console.log(`[AdPulse Server] Successfully synced ${campaignsStore.length} campaigns to Cloudflare D1 SQL.`);
+    } catch (d1Err: any) {
+      console.error('[AdPulse Server] Failed to save to D1 SQL:', d1Err.message);
+    }
+  }
+
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.json({
     success: true,
     count: campaignsStore.length,
+    storage: storageType,
     updatedAt: new Date().toISOString()
   });
+});
+
+/**
+ * GET /api/database/status
+ * Returns current database configuration and health
+ */
+app.get('/api/database/status', (req, res) => {
+  const config = getD1Config();
+  res.json({
+    enabled: config.enabled,
+    storageType: config.enabled ? 'cloudflare_d1' : 'local_disk',
+    databaseId: config.databaseId ? config.databaseId.substring(0, 8) + '...' : '',
+    accountId: config.accountId ? config.accountId.substring(0, 6) + '...' : '',
+    campaignCount: campaignsStore.length
+  });
+});
+
+/**
+ * POST /api/database/configure
+ * Protected: Configures Cloudflare D1 credentials, tests connection, and auto-provisions tables
+ */
+app.post('/api/database/configure', verifyAdminAuth, async (req, res) => {
+  const { accountId, databaseId, apiToken } = req.body || {};
+
+  if (!accountId || !databaseId || !apiToken) {
+    return res.status(400).json({ error: 'Account ID, Database ID, and API Token are all required' });
+  }
+
+  const test = await testD1Connection(accountId, databaseId, apiToken);
+  if (!test.success) {
+    return res.status(400).json({
+      success: false,
+      error: `Could not connect to Cloudflare D1: ${test.error || 'Connection failed'}. Please check Account ID, Database ID, and API Token.`
+    });
+  }
+
+  try {
+    saveD1Config({ accountId, databaseId, apiToken, enabled: true });
+    await initD1Tables({ accountId, databaseId, apiToken });
+    if (campaignsStore.length > 0) {
+      await saveD1Campaigns(campaignsStore);
+    }
+    return res.json({
+      success: true,
+      message: 'Successfully connected to Cloudflare D1 SQL! Tables created and campaigns synced.',
+      latencyMs: test.latencyMs
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 /**

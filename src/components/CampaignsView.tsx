@@ -20,8 +20,10 @@ import {
   X,
   FileSpreadsheet,
   Image as ImageIcon,
-  Upload
+  Upload,
+  CheckCircle2
 } from 'lucide-react';
+import { compressImageFile, formatBytes, isDataUri, estimateImageBytes } from '../utils/imageCompressor';
 
 interface CampaignsViewProps {
   campaigns: AdCreative[];
@@ -69,9 +71,11 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({
   const [targetDevices, setTargetDevices] = useState<DeviceType[]>(['desktop', 'mobile', 'tablet']);
   const [accentColor, setAccentColor] = useState('#4F46E5');
   const [estimatedEPC, setEstimatedEPC] = useState(1.50);
+  const [compressionInfo, setCompressionInfo] = useState<string | null>(null);
 
   // Open modal for Create
   const handleOpenCreate = () => {
+    setCompressionInfo(null);
     setEditingAd(null);
     setName('');
     setAdvertiser('');
@@ -573,21 +577,29 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({
                     <ImageIcon className="w-3.5 h-3.5 text-indigo-400" />
                     Product Image (URL or Upload)
                   </label>
-                  <label className="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer">
+                  <label className="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30 transition-colors">
                     <Upload className="w-3 h-3" />
-                    Upload from Device
+                    Upload & Compress to WebP
                     <input
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const reader = new FileReader();
-                          reader.onload = (ev) => {
-                            setImageUrl(ev.target?.result as string);
-                          };
-                          reader.readAsDataURL(file);
+                          setCompressionInfo('Compressing to lightweight WebP...');
+                          try {
+                            const res = await compressImageFile(file, { maxWidth: 640, maxHeight: 400, quality: 0.82 });
+                            setImageUrl(res.dataUrl);
+                            setCompressionInfo(`Optimized: ${formatBytes(res.originalSize)} → ${formatBytes(res.compressedSize)} (${res.savingsPercent}% WebP savings)`);
+                          } catch (err) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              setImageUrl(ev.target?.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                            setCompressionInfo(null);
+                          }
                         }
                       }}
                     />
@@ -610,13 +622,28 @@ export const CampaignsView: React.FC<CampaignsViewProps> = ({
                     </div>
                   )}
 
-                  <input
-                    type="url"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="https://images.unsplash.com/... or paste image URL"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
-                  />
+                  <div className="flex-1 min-w-0">
+                    <input
+                      type="text"
+                      value={imageUrl}
+                      onChange={(e) => {
+                        setImageUrl(e.target.value);
+                        if (!isDataUri(e.target.value) && e.target.value) {
+                          setCompressionInfo('Hosted Image URL (0 KB local storage overhead)');
+                        } else {
+                          setCompressionInfo(null);
+                        }
+                      }}
+                      placeholder="https://... or paste direct image URL (Imgur, Cloudflare, Amazon, CDN)"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+                    />
+                    {compressionInfo && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 mt-1 font-mono">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <span>{compressionInfo}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Quick Presets for fast testing */}

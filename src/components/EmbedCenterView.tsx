@@ -115,10 +115,57 @@ export const EmbedCenterView: React.FC<EmbedCenterViewProps> = ({
     setTimeout(() => setCopiedFullScript(false), 2000);
   };
 
+  const [copiedSchemaSql, setCopiedSchemaSql] = useState(false);
+
   const handleCopyWorker = () => {
     navigator.clipboard.writeText(workerScript);
     setCopiedWorkerCode(true);
     setTimeout(() => setCopiedWorkerCode(false), 2000);
+  };
+
+  const handleCopySchemaSql = () => {
+    const sql = `-- AdPulse Cloudflare D1 SQL Schema
+CREATE TABLE IF NOT EXISTS campaigns (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  advertiser TEXT NOT NULL,
+  format TEXT NOT NULL DEFAULT 'responsive_native',
+  headline TEXT NOT NULL,
+  description TEXT,
+  call_to_action TEXT NOT NULL DEFAULT 'Claim Deal',
+  destination_url TEXT NOT NULL,
+  display_url TEXT,
+  image_url TEXT,
+  price TEXT,
+  original_price TEXT,
+  badge_text TEXT DEFAULT 'Featured',
+  category TEXT DEFAULT 'General',
+  tags TEXT DEFAULT '[]',
+  weight INTEGER DEFAULT 50,
+  status TEXT DEFAULT 'active',
+  target_devices TEXT DEFAULT '["desktop", "mobile", "tablet"]',
+  estimated_epc REAL DEFAULT 1.5,
+  accent_color TEXT DEFAULT '#4F46E5',
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS security_settings (
+  id TEXT PRIMARY KEY DEFAULT 'primary',
+  master_passcode TEXT NOT NULL DEFAULT '2026',
+  is_passcode_protected INTEGER DEFAULT 1,
+  allowed_domains TEXT DEFAULT '["localhost", "elaannews.in"]',
+  block_unlisted_domains INTEGER DEFAULT 0,
+  click_debounce_seconds INTEGER DEFAULT 15,
+  filter_bots INTEGER DEFAULT 1,
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_campaigns_status ON campaigns(status);
+`;
+    navigator.clipboard.writeText(sql);
+    setCopiedSchemaSql(true);
+    setTimeout(() => setCopiedSchemaSql(false), 2000);
   };
 
   const handleDownloadScript = () => {
@@ -594,24 +641,37 @@ export const EmbedCenterView: React.FC<EmbedCenterViewProps> = ({
           </div>
         </div>
 
-        {/* Box 2: Cloudflare Worker 1-Click Code */}
+        {/* Box 2: Cloudflare D1 SQL Edge Database */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between space-y-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Cloud className="w-5 h-5 text-emerald-400" />
-              <h3 className="text-base font-bold text-white">Cloudflare Worker API Engine</h3>
+              <h3 className="text-base font-bold text-white">Cloudflare D1 SQL Edge Database</h3>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed mb-3">
-              If you want <code className="text-emerald-400 font-mono">https://adpulse1.chavanph7.workers.dev/api/campaigns</code> to serve campaigns natively on Cloudflare without needing an external server, copy this ready-to-deploy Worker code into your Cloudflare dashboard!
+              Want 100% persistent ad storage that never sleeps and never loses campaigns? Bind a free Cloudflare D1 SQL database to your Worker:
             </p>
+            <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 font-mono text-[11px] text-slate-300 space-y-1">
+              <div className="text-emerald-400"># 1. Create database in Cloudflare:</div>
+              <div>npx wrangler d1 create adpulse-db</div>
+              <div className="text-emerald-400 mt-1"># 2. Run SQL Schema:</div>
+              <div>npx wrangler d1 execute adpulse-db --file=./schema.sql</div>
+            </div>
           </div>
-          <div className="flex items-center gap-3 pt-2">
+          <div className="flex items-center gap-3 pt-2 flex-wrap">
             <button
-              onClick={handleCopyWorker}
+              onClick={handleCopySchemaSql}
               className="px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2 transition-colors shadow-md"
             >
-              {copiedWorkerCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copiedWorkerCode ? 'Copied Worker Code!' : 'Copy Cloudflare Worker Code'}
+              {copiedSchemaSql ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copiedSchemaSql ? 'Copied D1 Schema!' : 'Copy D1 SQL Schema'}
+            </button>
+            <button
+              onClick={handleCopyWorker}
+              className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center gap-1.5 transition-colors border border-slate-700"
+            >
+              {copiedWorkerCode ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {copiedWorkerCode ? 'Copied Worker Code!' : 'Copy _worker.js Code'}
             </button>
           </div>
         </div>
