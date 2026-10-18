@@ -67,12 +67,18 @@ export default function App() {
   });
 
   const [security, setSecurity] = useState<SecurityConfig>(() => {
+    let cfg = INITIAL_SECURITY_CONFIG;
     try {
       const saved = localStorage.getItem('adpulse_security');
-      return saved ? JSON.parse(saved) : INITIAL_SECURITY_CONFIG;
-    } catch {
-      return INITIAL_SECURITY_CONFIG;
-    }
+      if (saved) cfg = JSON.parse(saved);
+    } catch {}
+
+    // Check if current browser session is already unlocked
+    const isSessionUnlocked = sessionStorage.getItem('adpulse_dashboard_unlocked') === 'true';
+    return {
+      ...cfg,
+      isUnlocked: cfg.isPasscodeProtected ? isSessionUnlocked : true
+    };
   });
 
   const [logs, setLogs] = useState<AdEventLog[]>(() => {
@@ -87,13 +93,16 @@ export default function App() {
   // Modal states
   const [previewAd, setPreviewAd] = useState<AdCreative | null>(null);
 
-  // Background Server Sync function
+  // Background Server Sync function with master passcode authentication
   const pushCampaignsToServer = async (cList: AdCreative[]) => {
     try {
       setSyncState((prev) => ({ ...prev, status: 'syncing' }));
       const res = await fetch('/api/campaigns', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-adpulse-passcode': security.masterPasscode
+        },
         body: JSON.stringify(cList)
       });
       if (res.ok) {
@@ -239,16 +248,40 @@ export default function App() {
   };
 
   // Security Handlers
-  const handleUpdateSecurity = (updatedSecurity: SecurityConfig) => {
+  const handleUpdateSecurity = async (updatedSecurity: SecurityConfig) => {
     setSecurity(updatedSecurity);
+    try {
+      localStorage.setItem('adpulse_security', JSON.stringify(updatedSecurity));
+      await fetch('/api/security/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-adpulse-passcode': security.masterPasscode
+        },
+        body: JSON.stringify({
+          newPasscode: updatedSecurity.masterPasscode,
+          allowedDomains: updatedSecurity.allowedDomains,
+          blockUnlistedDomains: updatedSecurity.blockUnlistedDomains,
+          isPasscodeProtected: updatedSecurity.isPasscodeProtected
+        })
+      });
+    } catch (e) {
+      console.warn('Could not sync security update with server:', e);
+    }
   };
 
   const handleLockNow = () => {
-    setSecurity({ ...security, isUnlocked: false });
+    try {
+      sessionStorage.removeItem('adpulse_dashboard_unlocked');
+    } catch {}
+    setSecurity((prev) => ({ ...prev, isUnlocked: false }));
   };
 
   const handleUnlockSuccess = () => {
-    setSecurity({ ...security, isUnlocked: true });
+    try {
+      sessionStorage.setItem('adpulse_dashboard_unlocked', 'true');
+    } catch {}
+    setSecurity((prev) => ({ ...prev, isUnlocked: true }));
   };
 
   const handleToggleNavbarLock = () => {

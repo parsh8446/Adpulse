@@ -165,11 +165,11 @@ export const INITIAL_CAMPAIGNS: AdCreative[] = [
 ];
 
 export const INITIAL_SECURITY_CONFIG: SecurityConfig = {
-  isPasscodeProtected: false, // Default unlocked for seamless first-time onboarding
+  isPasscodeProtected: true, // Master passcode lock enabled by default for full security
   masterPasscode: '2026',
-  isUnlocked: true,
+  isUnlocked: false,
   sessionTimeoutMinutes: 60,
-  allowedDomains: ['localhost', 'my-cool-website.com', 'blog.example.com'],
+  allowedDomains: ['localhost', 'elaannews.in'],
   blockUnlistedDomains: false,
   clickDebounceSeconds: 15,
   filterBots: true

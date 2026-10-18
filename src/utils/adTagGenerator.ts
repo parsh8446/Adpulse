@@ -17,8 +17,9 @@ export function encodeCampaignsToken(campaigns: AdCreative[]): string {
     description: c.description,
     callToAction: c.callToAction,
     destinationUrl: c.destinationUrl,
-    displayUrl: c.displayUrl,
-    imageUrl: c.imageUrl,
+    // If imageUrl is an enormous base64 data URI (> 500 chars), omit from the embedded HTML token
+    // The live script will fetch full rich images cleanly via the API endpoint
+    imageUrl: c.imageUrl && c.imageUrl.startsWith('data:') && c.imageUrl.length > 500 ? undefined : c.imageUrl,
     price: c.price,
     originalPrice: c.originalPrice,
     badgeText: c.badgeText,
@@ -56,13 +57,13 @@ export interface HeaderSnippetOptions {
  * Configured with live API sync, random ad rotation, category fallback, and multi-in-article ads.
  */
 export function generateHeaderScriptSnippet(options: HeaderSnippetOptions = {}): string {
-  const domain = (options.publisherDomain || 'https://adpulse1.chavanph7.workers.dev').replace(/\/+$/, '');
+  const domain = (options.publisherDomain || 'https://adpulse-yf39.onrender.com').replace(/\/+$/, '');
   const autoAds = options.autoAds !== false;
   const randomize = options.randomizeAds !== false;
   const fallbackAll = options.fallbackAllPages !== false;
   const spacing = options.articleSpacing || 3;
   const maxAds = options.maxArticleAds || 4;
-  const apiUrl = options.apiUrl ? options.apiUrl.trim() : '';
+  const apiUrl = options.apiUrl ? options.apiUrl.trim() : `${domain}/api/campaigns`;
 
   const attrs: string[] = [
     `async`,
@@ -78,7 +79,9 @@ export function generateHeaderScriptSnippet(options: HeaderSnippetOptions = {}):
     attrs.push(`data-api="${apiUrl}"`);
   }
 
-  const shouldEmbedToken = options.includeTokenFallback !== false;
+  // Only embed campaigns token if explicitly requested (e.g. offline fallback)
+  // Keeps the production header tag ultra-lightweight (~250 bytes) instead of bloated MBs
+  const shouldEmbedToken = options.includeTokenFallback === true;
   if (shouldEmbedToken && options.campaigns && options.campaigns.length > 0) {
     const token = encodeCampaignsToken(options.campaigns);
     attrs.push(`data-campaigns="${token}"`);
@@ -340,7 +343,7 @@ const AD_TAG_CODE = \`(function() {
   }
 
   function findParagraphs() {
-    var selectors = ['.post-body p', '.articleBody p', '[itemprop="articleBody"] p', '.entry-content p', '.td-post-content p', '.single-content p', '.story-detail p', '.news-content p', 'article p', 'main p', '.post p', '.content p', 'body p'];
+    var selectors = ['.content__entry p', '[class*=\"content__entry\"] p', '.u-inner p', '.post-body p', '.articleBody p', '[itemprop=\"articleBody\"] p', '.entry-content p', '[class*=\"entry-content\"] p', '.td-post-content p', '.single-content p', '.story-detail p', '.news-content p', '.article-content p', 'article p', 'main p', '.post p', '.content p', 'body p'];
     var nodes = document.querySelectorAll(selectors.join(', '));
     var valid = [];
     for (var i = 0; i < nodes.length; i++) {
@@ -716,7 +719,7 @@ export function generateStandaloneAdTagScript(
   }
 
   function findParagraphs() {
-    var selectors = ['.post-body p', '.articleBody p', '[itemprop="articleBody"] p', '.entry-content p', '.td-post-content p', '.single-content p', '.story-detail p', '.news-content p', 'article p', 'main p', '.post p', '.content p', 'body p'];
+    var selectors = ['.content__entry p', '[class*=\"content__entry\"] p', '.u-inner p', '.post-body p', '.articleBody p', '[itemprop=\"articleBody\"] p', '.entry-content p', '[class*=\"entry-content\"] p', '.td-post-content p', '.single-content p', '.story-detail p', '.news-content p', '.article-content p', 'article p', 'main p', '.post p', '.content p', 'body p'];
     var nodes = document.querySelectorAll(selectors.join(', '));
     var valid = [];
     for (var i = 0; i < nodes.length; i++) {

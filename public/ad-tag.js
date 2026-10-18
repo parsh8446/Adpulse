@@ -558,21 +558,27 @@
   function findArticleParagraphs() {
     // Strategy 1: Target common blog/news article selectors
     var selectors = [
+      '.content__entry p',
+      '[class*="content__entry"] p',
+      '.u-inner p',
       '.post-body p',
       '.articleBody p',
       '[itemprop="articleBody"] p',
       '.entry-content p',
+      '[class*="entry-content"] p',
       '.td-post-content p',
       '.single-content p',
       '.story-detail p',
       '.news-content p',
       '.article-content p',
+      '[class*="article-content"] p',
       'article p',
       'main p',
       '.post p',
       '.content p',
       '#content p',
-      '.detail-content p'
+      '.detail-content p',
+      '.gh-content p'
     ];
 
     var nodes = document.querySelectorAll(selectors.join(', '));

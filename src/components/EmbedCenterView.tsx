@@ -55,13 +55,8 @@ export const EmbedCenterView: React.FC<EmbedCenterViewProps> = ({
   onForceSync,
   onImportCampaigns
 }) => {
-  const [publisherDomain, setPublisherDomain] = useState('https://adpulse1.chavanph7.workers.dev');
-  const [apiUrl, setApiUrl] = useState(() => {
-    if (typeof window !== 'undefined' && window.location.origin) {
-      return `${window.location.origin}/api/campaigns`;
-    }
-    return deliveryConfig.syncEndpoint || 'https://ais-dev-upccxkzqkbg3eursq2worv-714991714322.asia-northeast1.run.app/api/campaigns';
-  });
+  const [publisherDomain, setPublisherDomain] = useState('https://adpulse-yf39.onrender.com');
+  const [apiUrl, setApiUrl] = useState('https://adpulse-yf39.onrender.com/api/campaigns');
 
   const [tagMode, setTagMode] = useState<'live_api' | 'direct_sync' | 'standalone'>('live_api');
   const [copiedHeader, setCopiedHeader] = useState(false);
@@ -78,7 +73,7 @@ export const EmbedCenterView: React.FC<EmbedCenterViewProps> = ({
   const activeCampaigns = campaigns.filter(c => c.status === 'active');
   const spacingNumber = deliveryConfig.inArticleDensity === 'high' ? 3 : (deliveryConfig.inArticleDensity === 'medium' ? 5 : 8);
 
-  // Snippets
+  // Snippets - Ultra-lightweight (Zero Bloat ~260 characters)
   const liveApiSnippet = generateHeaderScriptSnippet({
     publisherDomain,
     autoAds: true,
@@ -87,8 +82,7 @@ export const EmbedCenterView: React.FC<EmbedCenterViewProps> = ({
     articleSpacing: spacingNumber,
     maxArticleAds: deliveryConfig.maxArticleAds,
     apiUrl,
-    includeTokenFallback: true,
-    campaigns: activeCampaigns
+    includeTokenFallback: false // Clean 1-line script tag with NO giant base64 token
   });
 
   const directSyncSnippet = generateDirectSyncHeaderScriptSnippet(
@@ -142,7 +136,10 @@ export const EmbedCenterView: React.FC<EmbedCenterViewProps> = ({
     try {
       const res = await fetch('/api/campaigns', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-adpulse-passcode': security.masterPasscode
+        },
         body: JSON.stringify(campaigns)
       });
       if (res.ok) {
@@ -359,24 +356,61 @@ export const EmbedCenterView: React.FC<EmbedCenterViewProps> = ({
         </div>
 
         {/* Sync Endpoint Config */}
-        <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="flex-1 min-w-0">
-            <div className="font-bold text-white flex items-center gap-1.5 mb-1">
-              <Zap className="w-3.5 h-3.5 text-emerald-400" />
-              Live Server Sync API Endpoint
+        <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-3 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="font-bold text-white flex items-center gap-1.5 mb-1">
+                <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                Render Ad Server Domain & API Configuration
+              </div>
+              <p className="text-slate-400 text-[11px]">
+                Configured for your live Render server: <code className="text-emerald-400 font-mono">https://adpulse-yf39.onrender.com</code>
+              </p>
             </div>
-            <p className="text-slate-400 text-[11px]">
-              This is the ad server endpoint that <code className="text-emerald-400 font-mono">ad-tag.js</code> queries to fetch your newly added campaigns in real time:
-            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPublisherDomain('https://adpulse-yf39.onrender.com');
+                  setApiUrl('https://adpulse-yf39.onrender.com/api/campaigns');
+                }}
+                className="px-2.5 py-1 text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-md hover:bg-emerald-500/20 transition-colors"
+              >
+                Use Render URL
+              </button>
+            </div>
           </div>
-          <div className="w-full sm:w-80">
-            <input
-              type="text"
-              value={apiUrl}
-              onChange={(e) => setApiUrl(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-emerald-300 focus:outline-none focus:border-emerald-500"
-              placeholder="https://.../api/campaigns"
-            />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                Script Host Domain (src)
+              </label>
+              <input
+                type="text"
+                value={publisherDomain}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setPublisherDomain(val);
+                  setApiUrl(`${val.replace(/\/+$/, '')}/api/campaigns`);
+                }}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-emerald-300 focus:outline-none focus:border-emerald-500"
+                placeholder="https://adpulse-yf39.onrender.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                Live Campaigns API (data-api)
+              </label>
+              <input
+                type="text"
+                value={apiUrl}
+                onChange={(e) => setApiUrl(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-emerald-300 focus:outline-none focus:border-emerald-500"
+                placeholder="https://adpulse-yf39.onrender.com/api/campaigns"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -409,7 +443,7 @@ export const EmbedCenterView: React.FC<EmbedCenterViewProps> = ({
               }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
-              Live-Sync Tag (Auto-Updates Website)
+              Live-Sync Tag (Fast ~250 chars)
             </button>
             <button
               onClick={() => setTagMode('direct_sync')}
@@ -420,7 +454,7 @@ export const EmbedCenterView: React.FC<EmbedCenterViewProps> = ({
               }`}
             >
               <Zap className="w-3.5 h-3.5" />
-              Direct-Sync + Live Fallback
+              Direct-Sync + Offline Fallback
             </button>
           </div>
         </div>
@@ -430,11 +464,16 @@ export const EmbedCenterView: React.FC<EmbedCenterViewProps> = ({
           <div className="flex items-center justify-between px-4 py-2 bg-slate-900/90 border-b border-slate-800 text-xs text-slate-400">
             <div className="flex items-center gap-2">
               <FileCode className="w-4 h-4 text-emerald-400" />
-              <span className="font-mono text-emerald-300">HTML &lt;head&gt; Tag (With Live API Sync & Multi-Article Ads)</span>
+              <span className="font-mono text-emerald-300">HTML &lt;head&gt; Tag (Clean 1-Line Tag — No Bloat)</span>
             </div>
-            <span className="text-[11px] text-slate-400">
-              {activeCampaigns.length} campaigns active in ad server
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
+                Length: {activeSnippet.length} chars (~{(activeSnippet.length / 1024).toFixed(1)} KB)
+              </span>
+              <span className="text-[11px] text-slate-400">
+                {activeCampaigns.length} campaigns active in ad server
+              </span>
+            </div>
           </div>
           <pre className="p-4 text-xs font-mono text-emerald-300 overflow-x-auto whitespace-pre-wrap leading-relaxed select-all">
             {activeSnippet}

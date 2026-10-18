@@ -1,0 +1,9 @@
+{
+  "masterPasscode": "2026",
+  "isPasscodeProtected": true,
+  "allowedDomains": [
+    "localhost",
+    "elaannews.in"
+  ],
+  "blockUnlistedDomains": false
+}
