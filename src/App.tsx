@@ -76,9 +76,9 @@ export default function App() {
       }
     } catch {}
 
-    // Guarantee masterPasscode is never empty or corrupt
-    if (!cfg.masterPasscode || !cfg.masterPasscode.trim()) {
-      cfg.masterPasscode = '2026';
+    const sessionPasscode = sessionStorage.getItem('adpulse_admin_passcode');
+    if (sessionPasscode) {
+      cfg.masterPasscode = sessionPasscode;
     }
 
     // Check if current browser session is already unlocked
@@ -282,15 +282,21 @@ export default function App() {
   const handleLockNow = () => {
     try {
       sessionStorage.removeItem('adpulse_dashboard_unlocked');
+      sessionStorage.removeItem('adpulse_admin_passcode');
     } catch {}
     setSecurity((prev) => ({ ...prev, isUnlocked: false }));
   };
 
-  const handleUnlockSuccess = () => {
+  const handleUnlockSuccess = (verifiedPasscode: string) => {
     try {
       sessionStorage.setItem('adpulse_dashboard_unlocked', 'true');
+      sessionStorage.setItem('adpulse_admin_passcode', verifiedPasscode);
     } catch {}
-    setSecurity((prev) => ({ ...prev, isUnlocked: true }));
+    setSecurity((prev) => ({ 
+      ...prev, 
+      masterPasscode: verifiedPasscode,
+      isUnlocked: true 
+    }));
   };
 
   const handleToggleNavbarLock = () => {
@@ -445,7 +451,6 @@ export default function App() {
       {/* Modal: Master Passcode Lock Gate */}
       {isScreenLocked && (
         <PasscodeLockModal
-          correctPasscode={security.masterPasscode}
           onUnlock={handleUnlockSuccess}
         />
       )}

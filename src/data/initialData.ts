@@ -166,7 +166,7 @@ export const INITIAL_CAMPAIGNS: AdCreative[] = [
 
 export const INITIAL_SECURITY_CONFIG: SecurityConfig = {
   isPasscodeProtected: true, // Master passcode lock enabled by default for full security
-  masterPasscode: '2026',
+  masterPasscode: '',
   isUnlocked: false,
   sessionTimeoutMinutes: 60,
   allowedDomains: ['localhost', 'elaannews.in'],

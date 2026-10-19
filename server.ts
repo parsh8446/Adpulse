@@ -261,17 +261,28 @@ app.post('/api/database/configure', verifyAdminAuth, async (req, res) => {
 
 /**
  * POST /api/security/verify
- * Checks if a provided passcode is valid for the dashboard
+ * Checks if a provided passcode is valid for the dashboard against ADMIN_PASSCODE
  */
 app.post('/api/security/verify', (req, res) => {
   const { passcode } = req.body || {};
   if (!securityConfig.isPasscodeProtected) {
     return res.json({ success: true, isProtected: false });
   }
-  if (String(passcode) === String(securityConfig.masterPasscode)) {
+
+  const envPasscode = String(process.env.ADMIN_PASSCODE || '').trim();
+  const configuredPasscode = String(securityConfig.masterPasscode || '').trim();
+  const expectedPasscode = envPasscode || (configuredPasscode !== '2026' ? configuredPasscode : '2026');
+
+  if (passcode && String(passcode).trim() === expectedPasscode) {
     return res.json({ success: true, isProtected: true });
   }
-  return res.status(401).json({ success: false, error: 'Incorrect passcode' });
+
+  return res.status(401).json({ 
+    success: false, 
+    error: envPasscode 
+      ? 'Incorrect admin passcode. Enter the value set in your ADMIN_PASSCODE environment variable.' 
+      : 'Incorrect admin passcode.' 
+  });
 });
 
 /**
