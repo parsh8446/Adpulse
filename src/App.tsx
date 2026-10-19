@@ -70,8 +70,16 @@ export default function App() {
     let cfg = INITIAL_SECURITY_CONFIG;
     try {
       const saved = localStorage.getItem('adpulse_security');
-      if (saved) cfg = JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        cfg = { ...cfg, ...parsed };
+      }
     } catch {}
+
+    // Guarantee masterPasscode is never empty or corrupt
+    if (!cfg.masterPasscode || !cfg.masterPasscode.trim()) {
+      cfg.masterPasscode = '2026';
+    }
 
     // Check if current browser session is already unlocked
     const isSessionUnlocked = sessionStorage.getItem('adpulse_dashboard_unlocked') === 'true';
@@ -97,11 +105,12 @@ export default function App() {
   const pushCampaignsToServer = async (cList: AdCreative[]) => {
     try {
       setSyncState((prev) => ({ ...prev, status: 'syncing' }));
+      const activePasscode = security.masterPasscode || '2026';
       const res = await fetch('/api/campaigns', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-adpulse-passcode': security.masterPasscode
+          'x-adpulse-passcode': activePasscode
         },
         body: JSON.stringify(cList)
       });

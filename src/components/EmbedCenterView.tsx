@@ -181,11 +181,12 @@ CREATE INDEX IF NOT EXISTS idx_campaigns_status ON campaigns(status);
   const handlePushToEndpoint = async () => {
     setLocalPushStatus('Syncing campaigns with ad server...');
     try {
+      const activePasscode = security.masterPasscode || '2026';
       const res = await fetch('/api/campaigns', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-adpulse-passcode': security.masterPasscode
+          'x-adpulse-passcode': activePasscode
         },
         body: JSON.stringify(campaigns)
       });

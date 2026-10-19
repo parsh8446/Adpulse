@@ -75,16 +75,18 @@ export const SecurityView: React.FC<SecurityViewProps> = ({
     setD1Loading(true);
     setD1Message(null);
     try {
+      const activePasscode = security.masterPasscode || passcode || '2026';
       const res = await fetch('/api/database/configure', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-adpulse-passcode': security.masterPasscode
+          'x-adpulse-passcode': activePasscode
         },
         body: JSON.stringify({
           accountId: d1AccountId.trim(),
           databaseId: d1DatabaseId.trim(),
-          apiToken: d1ApiToken.trim()
+          apiToken: d1ApiToken.trim(),
+          adminPasscode: activePasscode
         })
       });
       const data = await res.json();

@@ -84,14 +84,30 @@ function verifyAdminAuth(req: express.Request, res: express.Response, next: expr
   const provided = 
     req.headers['x-adpulse-passcode'] ||
     (req.headers['authorization'] ? req.headers['authorization'].replace(/^Bearer\s+/i, '') : null) ||
-    req.query.passcode;
+    req.query.passcode ||
+    (req.body && (req.body.adminPasscode || req.body.passcode));
 
-  if (provided && String(provided) === String(securityConfig.masterPasscode)) {
+  const configuredPasscode = String(securityConfig.masterPasscode || '').trim();
+  const envPasscode = String(process.env.ADMIN_PASSCODE || '').trim();
+
+  // Security Hardening: If owner sets a custom secret in Render or settings,
+  // strictly enforce ONLY that secret. Do not accept default 2026.
+  const validSet = new Set<string>();
+  if (envPasscode) {
+    validSet.add(envPasscode);
+  } else if (configuredPasscode && configuredPasscode !== '2026') {
+    validSet.add(configuredPasscode);
+  } else {
+    // Only accept initial setup default 2026 if no custom secret has been set yet
+    validSet.add('2026');
+  }
+
+  if (provided && validSet.has(String(provided).trim())) {
     return next();
   }
 
   return res.status(401).json({
-    error: 'Unauthorized: Admin passcode required to modify campaigns or settings.',
+    error: 'Unauthorized: Valid admin passcode required to modify campaigns or database settings.',
     code: 'PASSCODE_REQUIRED'
   });
 }
